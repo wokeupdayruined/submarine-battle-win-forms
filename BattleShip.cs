@@ -8,7 +8,8 @@ using System.Windows.Forms;
 
 namespace sea_battle_C_
 {
-    enum Direction { Right, Left, Down, Up };
+    enum Direction { Right, Left, Down, Up, None };
+    enum FacingDirection {Left, Right};
     internal class BattleShip : Control
     {
         Bitmap Bitmap { get; set; }
@@ -16,11 +17,67 @@ namespace sea_battle_C_
         public int MaxY { get; set; }
         public int XSpeed { get; set; } = 5;
         public int YSpeed { get; set; } = 5;
-        public Direction Direction { get; set; }
-        public BattleShip()
+        public Direction Direction { get; set; } = Direction.None;
+        public BattleShip(FacingDirection direction)
         {
             Bitmap = new Bitmap("resources/ship.jpg");
-            Bitmap = new Bitmap(Bitmap, new Size(40, 40));
+            Bitmap = new Bitmap(Bitmap, new Size(Constants.Ship.Width, Constants.Ship.Height));
+            Width = Constants.Ship.Width;
+            Height = Constants.Ship.Height;
+            if (direction == FacingDirection.Right)
+                Bitmap.RotateFlip(RotateFlipType.RotateNoneFlipX);
+        }
+
+        public void UpClicked()
+        {
+            switch (this.Direction)
+            {
+                case Direction.Down:
+                    Direction = Direction.None;
+                    break;
+                default:
+                    Direction = Direction.Up;
+                    break;
+            }
+        }
+
+        public void DownClicked()
+        {
+            switch (this.Direction)
+            {
+                case Direction.Up:
+                    Direction = Direction.None;
+                    break;
+                default:
+                    Direction = Direction.Down;
+                    break;
+            }
+        }
+
+        public void RightClicked()
+        {
+            switch (this.Direction)
+            {
+                case Direction.Left:
+                    Direction = Direction.None;
+                    break;
+                default:
+                    Direction = Direction.Right;
+                    break;
+            }
+        }
+
+        public void LeftClicked()
+        {
+            switch (this.Direction)
+            {
+                case Direction.Right:
+                    Direction = Direction.None;
+                    break;
+                default:
+                    Direction = Direction.Left;
+                    break;
+            }
         }
 
         public void MoveShip()
@@ -38,6 +95,8 @@ namespace sea_battle_C_
                     break;
                 case Direction.Up:
                     MoveUp();
+                    break;
+                default:
                     break;
             }
         }
@@ -74,6 +133,7 @@ namespace sea_battle_C_
         {
             var graphics = e.Graphics;
             graphics.DrawImageUnscaled(Bitmap, 0, 0);
+            base.OnPaint(e);
         }
     }
 }
