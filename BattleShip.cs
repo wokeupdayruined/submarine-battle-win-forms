@@ -22,7 +22,7 @@ namespace sea_battle_C_
         public BattleShip(Form1 form, FacingDirection direction)
         {
             Form = form;
-            Bitmap = new Bitmap("resources/ship.jpg");
+            Bitmap = new Bitmap(Constants.Ship.ImagePath);
             Bitmap = new Bitmap(Bitmap, new Size(Constants.Ship.Width, Constants.Ship.Height));
             Width = Constants.Ship.Width;
             Height = Constants.Ship.Height;

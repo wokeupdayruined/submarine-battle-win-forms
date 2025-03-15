@@ -24,7 +24,8 @@ namespace sea_battle_C_
 
     public static class Ship
     {
-        public const int Width = 40;
+        public const string ImagePath = "resources/ship.png";
+        public const int Width = 80;
         public const int Height = 40;
     }
 
