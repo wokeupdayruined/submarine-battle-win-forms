@@ -13,13 +13,15 @@ namespace sea_battle_C_
 {
     public partial class Form1 : Form
     {
-        BattleShip player1 = new BattleShip(FacingDirection.Right);
-        BattleShip player2 = new BattleShip(FacingDirection.Left);
+        BattleShip player1;
+        BattleShip player2;
         Timer timer = new Timer();
         public Form1()
         {
             AllocConsole();
             InitializeComponent();
+            player1 = new BattleShip(this, FacingDirection.Right);
+            player2 = new BattleShip(this, FacingDirection.Left);
             this.ClientSize = new Size(Constants.FormWidth, Constants.FormHeight);
             this.ResizeRedraw = true;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -41,6 +43,13 @@ namespace sea_battle_C_
         {
             timer.Interval = 1000/60;
             timer.Tick += new EventHandler(StepTimer);
+        }
+
+        public bool HasObstacle(Rectangle rectangle)
+        {
+            var region1 = player1.Bounds;
+            var region2 = player2.Bounds;
+            return region1.IntersectsWith(rectangle) || region2.IntersectsWith(rectangle);
         }
 
         private void InitializeShip(BattleShip ship, Point location)
