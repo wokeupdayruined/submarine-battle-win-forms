@@ -11,12 +11,20 @@ using System.Runtime.InteropServices;
 
 namespace sea_battle_C_
 {
+    enum State
+    {
+        BeforeStart,
+        InProgress,
+        GameOver
+    }
     public partial class Form1 : Form
     {
         BattleShip player1;
         BattleShip player2;
         Timer timer = new Timer();
         List<Projectile> projectiles = new List<Projectile>();
+        State state = State.BeforeStart;
+        string FinalText = "";
         public Form1()
         {
             AllocConsole();
@@ -29,6 +37,7 @@ namespace sea_battle_C_
             this.MaximizeBox = false;
             this.KeyPreview = true;
             this.KeyDown += new KeyEventHandler(this.Form1_KeyDown);
+            this.Paint += new PaintEventHandler(this.Form1_Paint);
             InitializeShip(player1, new Point(0, Constants.FormHeight / 2));
             InitializeShip(player2, new Point(Constants.FormWidth - player1.Width, Constants.FormHeight / 2));
             InitializeTimer();
@@ -57,11 +66,15 @@ namespace sea_battle_C_
             if (player1.Bounds.IntersectsWith(projectile))
             {
                 Console.WriteLine("player 1 has been shot");
-                // TODO: game over
+                FinalText = "Player 2 won!";
+                state = State.GameOver;
+                Invalidate();
             } else if (player2.Bounds.IntersectsWith(projectile))
             {
                 Console.WriteLine("player 2 has been shot");
-                // TODO: game over
+                FinalText = "Player 1 won!";
+                state = State.GameOver;
+                Invalidate();
             }
         }
 
@@ -82,6 +95,25 @@ namespace sea_battle_C_
 
         private void StepTimer(object sender, EventArgs e)
         {
+            switch (state)
+            {
+                case State.BeforeStart:
+                    this.StepTimerBeforeStart(sender, e);
+                    break;
+                case State.InProgress:
+                    this.StepTimerInProgress(sender, e);
+                    break;
+                case State.GameOver:
+                    this.StepTimerGameOver(sender, e);
+                    break;
+            }
+        }
+
+        private void StepTimerBeforeStart(object sender, EventArgs e) {
+
+        }
+
+        private void StepTimerInProgress(object sender, EventArgs e) {
             player1.MoveShip();
             player2.MoveShip();
             foreach (var projectile in projectiles)
@@ -97,10 +129,14 @@ namespace sea_battle_C_
             }
         }
 
+        private void StepTimerGameOver(object sender, EventArgs e) {}
+
         public void CreateProjectile(Constants.Ship.PlayerShip playerShip) {
             var projectile = new Projectile(this, playerShip, this.ClientSize.Width, this.ClientSize.Height);
-            Point location = player1.Location;
-            location.X += player1.Width * projectile.DirectionValue;
+            BattleShip trigger;
+            if (playerShip == Constants.Ship.PlayerShip.Player1) trigger = player1; else trigger = player2;
+            Point location = trigger.Location;
+            location.X += trigger.Width * projectile.DirectionValue;
             projectile.Location = location;
             projectiles.Add(projectile);
             Controls.Add(projectile);
@@ -109,6 +145,40 @@ namespace sea_battle_C_
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             Console.WriteLine("key: " + e.KeyCode);
+            switch (state)
+            {
+                case State.BeforeStart:
+                    this.Form1_KeyDownBeforeStart(sender, e);
+                    break;
+                case State.InProgress:
+                    this.Form1_KeyDownInProgress(sender, e);
+                    break;
+                case State.GameOver:
+                    this.Form1_KeyDownGameOver(sender, e);
+                    break;
+            }
+        }
+
+        private void Form1_KeyDownBeforeStart(object sender, KeyEventArgs e) {
+            state = State.InProgress;
+            Reset();
+            Invalidate();
+        }
+
+        private void Reset()
+        {
+            FinalText = "";
+            player1.Location = new Point(0, this.ClientSize.Height / 2);
+            player2.Location = new Point(this.ClientSize.Width - player1.Width, this.ClientSize.Height / 2);
+            foreach (var projectile in projectiles)
+            {
+                Controls.Remove(projectile);
+            }
+            projectiles.Clear();
+            Invalidate();
+        }
+
+        private void Form1_KeyDownInProgress(object sender, KeyEventArgs e) {
             switch (e.KeyCode)
             {
                 case Constants.Player1Controls.MoveRight:
@@ -142,6 +212,43 @@ namespace sea_battle_C_
                     CreateProjectile(Constants.Ship.PlayerShip.Player2);
                     break;
             }
+        }
+
+        private void Form1_KeyDownGameOver(object sender, KeyEventArgs e) {
+            state = State.BeforeStart;
+            Invalidate();
+        }
+    
+        private void Form1_Paint(object sender, PaintEventArgs e)
+        {
+            switch (state)
+            {
+                case State.BeforeStart:
+                    this.Form1_PaintBeforeStart(sender, e);
+                    break;
+                case State.InProgress:
+                    this.Form1_PaintInProgress(sender, e);
+                    break;
+                case State.GameOver:
+                    this.Form1_PaintGameOver(sender, e);
+                    break;
+            }
+        }
+
+        private void Form1_PaintBeforeStart(object sender, PaintEventArgs e)
+        {
+            var graphics = e.Graphics;
+            graphics.DrawString("Нажмите любую клавишу чтобы начать", new Font("Arial", 20), Brushes.Black, new Point(this.ClientSize.Width / 2 - 250, 0));
+        }
+
+        private void Form1_PaintInProgress(object sender, PaintEventArgs e)
+        {
+        }
+
+        private void Form1_PaintGameOver(object sender, PaintEventArgs e)   
+        {
+            var graphics = e.Graphics;
+            graphics.DrawString(FinalText, new Font("Arial", 20), Brushes.Black, new Point(this.ClientSize.Width / 2 - 100, 0));
         }
     }
 }
