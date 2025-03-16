@@ -216,6 +216,7 @@ namespace sea_battle_C_
 
         private void Form1_KeyDownGameOver(object sender, KeyEventArgs e) {
             state = State.BeforeStart;
+            Reset();
             Invalidate();
         }
     
