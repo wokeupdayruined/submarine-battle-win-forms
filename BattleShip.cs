@@ -9,7 +9,6 @@ using System.Windows.Forms;
 namespace sea_battle_C_
 {
     enum Direction { Right, Left, Down, Up, None };
-    enum FacingDirection {Left, Right};
     internal class BattleShip : Control
     {
         Bitmap Bitmap { get; set; }
@@ -19,15 +18,20 @@ namespace sea_battle_C_
         public int YSpeed { get; set; } = 5;
         public Direction Direction { get; set; } = Direction.None;
         Form1 Form { get; set; }
-        public BattleShip(Form1 form, FacingDirection direction)
+        public BattleShip(Form1 form, Constants.Ship.PlayerShip playerShip, int maxX, int maxY)
         {
             Form = form;
-            Bitmap = new Bitmap(Constants.Ship.ImagePath);
+            if (playerShip == Constants.Ship.PlayerShip.Player1)
+            {
+                Bitmap = new Bitmap(Constants.Ship.ImagePath1);
+            } else {
+                Bitmap = new Bitmap(Constants.Ship.ImagePath2);
+            }
             Bitmap = new Bitmap(Bitmap, new Size(Constants.Ship.Width, Constants.Ship.Height));
             Width = Constants.Ship.Width;
             Height = Constants.Ship.Height;
-            if (direction == FacingDirection.Right)
-                Bitmap.RotateFlip(RotateFlipType.RotateNoneFlipX);
+            MaxX = maxX;
+            MaxY = maxY;
         }
 
         public void UpClicked()
