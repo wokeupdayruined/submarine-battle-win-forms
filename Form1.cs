@@ -21,6 +21,7 @@ namespace sea_battle_C_
     {
         BattleShip player1;
         BattleShip player2;
+        Stats stats = new Stats();
         Timer timer = new Timer();
         List<Projectile> projectiles = new List<Projectile>();
         State state = State.BeforeStart;
@@ -61,20 +62,30 @@ namespace sea_battle_C_
             projectile.toRemove = true;
         }
 
-        public void CheckCollision(Rectangle projectile)
+        public void CheckCollision(Projectile projectile)
         {
-            if (player1.Bounds.IntersectsWith(projectile))
+            if (player1.ShipBounds.IntersectsWith(projectile.Bounds))
             {
                 Console.WriteLine("player 1 has been shot");
-                FinalText = "Player 2 won!";
-                state = State.GameOver;
-                Invalidate();
-            } else if (player2.Bounds.IntersectsWith(projectile))
+                player1.Hit(projectile);
+                if (player1.Health == 0)
+                {
+                    this.stats.player2Wins++;
+                    FinalText = "Player 2 won!";
+                    state = State.GameOver;
+                    Invalidate();
+                }
+            } else if (player2.ShipBounds.IntersectsWith(projectile.Bounds))
             {
                 Console.WriteLine("player 2 has been shot");
-                FinalText = "Player 1 won!";
-                state = State.GameOver;
-                Invalidate();
+                player2.Hit(projectile);
+                if (player2.Health == 0)
+                {
+                    this.stats.player1Wins++;
+                    FinalText = "Player 1 won!";
+                    state = State.GameOver;
+                    Invalidate();
+                }
             }
         }
 
@@ -217,7 +228,7 @@ namespace sea_battle_C_
         private void Form1_KeyDownGameOver(object sender, KeyEventArgs e) {
             state = State.BeforeStart;
             Reset();
-            Invalidate();
+            Invalidate(); 
         }
     
         private void Form1_Paint(object sender, PaintEventArgs e)
@@ -249,7 +260,9 @@ namespace sea_battle_C_
         private void Form1_PaintGameOver(object sender, PaintEventArgs e)   
         {
             var graphics = e.Graphics;
+            var playersStat = $"{this.stats.player1Wins}:{this.stats.player2Wins}";
             graphics.DrawString(FinalText, new Font("Arial", 20), Brushes.Black, new Point(this.ClientSize.Width / 2 - 100, 0));
+            graphics.DrawString(playersStat, new Font("Arial", 20), Brushes.Black, new Point(this.ClientSize.Width / 2 - 35, 23));
         }
     }
 }

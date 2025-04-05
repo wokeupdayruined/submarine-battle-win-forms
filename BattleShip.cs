@@ -17,6 +17,9 @@ namespace sea_battle_C_
         public int XSpeed { get; set; } = 5;
         public int YSpeed { get; set; } = 5;
         public Direction Direction { get; set; } = Direction.None;
+        public int Health { get; set; } = 99;
+        private List<WeakReference<Projectile>> projectiles = new List<WeakReference<Projectile>>();
+        public Rectangle ShipBounds => new Rectangle(Location.X, Location.Y, Bitmap.Width, Bitmap.Height);
         Form1 Form { get; set; }
         public BattleShip(Form1 form, Constants.Ship.PlayerShip playerShip, int maxX, int maxY)
         {
@@ -29,7 +32,7 @@ namespace sea_battle_C_
             }
             Bitmap = new Bitmap(Bitmap, new Size(Constants.Ship.Width, Constants.Ship.Height));
             Width = Constants.Ship.Width;
-            Height = Constants.Ship.Height;
+            Height = Constants.Ship.Height + 20;
             MaxX = maxX;
             MaxY = maxY;
         }
@@ -147,10 +150,28 @@ namespace sea_battle_C_
             Location = location;
         }
 
+        public void Hit(Projectile projectile) {
+
+            for (int i = 0; i < projectiles.Count; i++) {
+                if (projectiles[i].TryGetTarget(out var target) && target == projectile) {
+                    return;
+                }
+            }
+
+            this.projectiles.Add(new WeakReference<Projectile>(projectile));
+            this.Health -= projectile.Damage;
+            if (this.Health < 0) {
+                this.Health = 0;
+            }
+            Invalidate();
+        }
+
+
         protected override void OnPaint(PaintEventArgs e)
         {
             var graphics = e.Graphics;
             graphics.DrawImageUnscaled(Bitmap, 0, 0);
+            graphics.DrawString(Health.ToString(), new Font("Arial", 14), Brushes.Black, new Point(0, Bitmap.Height));
             base.OnPaint(e);
         }
     }

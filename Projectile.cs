@@ -8,8 +8,8 @@ using System.Windows.Forms;
 
 namespace sea_battle_C_
 {
-    enum ProjectileDirection { Right, Left };
-    internal class Projectile : Control
+    public enum ProjectileDirection { Right, Left };
+    public class Projectile : Control
     {
         Bitmap Bitmap { get; set; }
         public int MaxX { get; set; }
@@ -20,6 +20,7 @@ namespace sea_battle_C_
         Form1 Form { get; set; }
         public int DirectionValue { get; private set; } = 1;
         public bool toRemove { get; set; } = false;
+        public int Damage { get; set; } = 50;
         public Projectile(Form1 form, Constants.Ship.PlayerShip playerShip, int maxX, int maxY)
         {
             Form = form;
@@ -58,7 +59,7 @@ namespace sea_battle_C_
             var nextLocation = Location;
             nextLocation.X += XSpeed;
             Location = nextLocation;
-            Form.CheckCollision(this.Bounds);
+            Form.CheckCollision(this);
             if (Location.X > MaxX)
             {
                 Console.WriteLine("Projectile has left the screen");
@@ -72,7 +73,7 @@ namespace sea_battle_C_
             var nextLocation = Location;
             nextLocation.X -= XSpeed;
             Location = nextLocation;
-            Form.CheckCollision(this.Bounds);
+            Form.CheckCollision(this);
             if (Location.X < -Width)
             {
                 Console.WriteLine("Projectile has left the screen");
