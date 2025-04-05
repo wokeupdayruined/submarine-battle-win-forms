@@ -6,6 +6,7 @@ namespace sea_battle_C_
   {
     public static int FormWidth = 800;
     public static int FormHeight = 600;
+    public static string BackgroundImagePath = "resources/KrustyKrab.jpg";
     public static class Player1Controls
     {
         public const Keys MoveRight = Keys.D;
@@ -36,6 +37,7 @@ namespace sea_battle_C_
         public const string ProjectilePath2 = "resources/projectile2.png";
         public const int Width = 80;
         public const int Height = 40;
+        public const int Health = 100;
     }
 
   }

@@ -11,30 +11,41 @@ namespace sea_battle_C_
     enum Direction { Right, Left, Down, Up, None };
     internal class BattleShip : Control
     {
-        Bitmap Bitmap { get; set; }
+        private Bitmap bitmap;
+        public ref Bitmap Bitmap
+        {
+            get { return ref bitmap; }
+        }
         public int MaxX { get; set; }
         public int MaxY { get; set; }
         public int XSpeed { get; set; } = 5;
         public int YSpeed { get; set; } = 5;
         public Direction Direction { get; set; } = Direction.None;
-        public int Health { get; set; } = 99;
+        public int Health { get; set; } = Constants.Ship.Health;
         private List<WeakReference<Projectile>> projectiles = new List<WeakReference<Projectile>>();
         public Rectangle ShipBounds => new Rectangle(Location.X, Location.Y, Bitmap.Width, Bitmap.Height);
+        public Label label = new Label();
         Form1 Form { get; set; }
         public BattleShip(Form1 form, Constants.Ship.PlayerShip playerShip, int maxX, int maxY)
         {
+            DoubleBuffered = true;
             Form = form;
             if (playerShip == Constants.Ship.PlayerShip.Player1)
             {
-                Bitmap = new Bitmap(Constants.Ship.ImagePath1);
+                Bitmap = new Bitmap(Image.FromFile(Constants.Ship.ImagePath1), new Size(Constants.Ship.Width, Constants.Ship.Height));
             } else {
-                Bitmap = new Bitmap(Constants.Ship.ImagePath2);
+                Bitmap = new Bitmap(Image.FromFile(Constants.Ship.ImagePath2), new Size(Constants.Ship.Width, Constants.Ship.Height));
             }
-            Bitmap = new Bitmap(Bitmap, new Size(Constants.Ship.Width, Constants.Ship.Height));
             Width = Constants.Ship.Width;
             Height = Constants.Ship.Height + 20;
             MaxX = maxX;
             MaxY = maxY;
+            this.Controls.Add(label);
+            label.Text = Health.ToString();
+            label.Location = new Point(0, Bitmap.Height + 2);
+            label.Font = new Font("Arial", 14);
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
         }
 
         public void UpClicked()
@@ -166,13 +177,16 @@ namespace sea_battle_C_
             Invalidate();
         }
 
-
         protected override void OnPaint(PaintEventArgs e)
         {
             var graphics = e.Graphics;
             graphics.DrawImageUnscaled(Bitmap, 0, 0);
-            graphics.DrawString(Health.ToString(), new Font("Arial", 14), Brushes.Black, new Point(0, Bitmap.Height));
             base.OnPaint(e);
+        }
+
+        public void Reinitialize() {
+            this.Health = Constants.Ship.Health;
+            this.Direction = Direction.None;
         }
     }
 }

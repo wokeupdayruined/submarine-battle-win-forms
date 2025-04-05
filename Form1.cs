@@ -26,12 +26,15 @@ namespace sea_battle_C_
         List<Projectile> projectiles = new List<Projectile>();
         State state = State.BeforeStart;
         string FinalText = "";
+        Bitmap bitmap = new Bitmap(Image.FromFile(Constants.BackgroundImagePath), Constants.FormWidth, Constants.FormHeight);
         public Form1()
         {
+            DoubleBuffered = true;
             AllocConsole();
             InitializeComponent();
             player1 = new BattleShip(this, Constants.Ship.PlayerShip.Player1, Constants.FormWidth, Constants.FormHeight);
             player2 = new BattleShip(this, Constants.Ship.PlayerShip.Player2, Constants.FormWidth, Constants.FormHeight);
+            Utils.RemoveWhitePixels(ref bitmap);
             this.ClientSize = new Size(Constants.FormWidth, Constants.FormHeight);
             this.ResizeRedraw = true;
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -73,6 +76,8 @@ namespace sea_battle_C_
                     this.stats.player2Wins++;
                     FinalText = "Player 2 won!";
                     state = State.GameOver;
+                    player1.Reinitialize();
+                    player2.Reinitialize();
                     Invalidate();
                 }
             } else if (player2.ShipBounds.IntersectsWith(projectile.Bounds))
@@ -227,6 +232,9 @@ namespace sea_battle_C_
 
         private void Form1_KeyDownGameOver(object sender, KeyEventArgs e) {
             state = State.BeforeStart;
+            FinalText = "";
+            player1.Reinitialize();
+            player2.Reinitialize();
             Reset();
             Invalidate(); 
         }
@@ -250,16 +258,20 @@ namespace sea_battle_C_
         private void Form1_PaintBeforeStart(object sender, PaintEventArgs e)
         {
             var graphics = e.Graphics;
+            graphics.DrawImageUnscaled(bitmap, 0, 0);
             graphics.DrawString("Нажмите любую клавишу чтобы начать", new Font("Arial", 20), Brushes.Black, new Point(this.ClientSize.Width / 2 - 250, 0));
         }
 
         private void Form1_PaintInProgress(object sender, PaintEventArgs e)
         {
+            var graphics = e.Graphics;
+            graphics.DrawImageUnscaled(bitmap, 0, 0);
         }
 
         private void Form1_PaintGameOver(object sender, PaintEventArgs e)   
         {
             var graphics = e.Graphics;
+            graphics.DrawImageUnscaled(bitmap, 0, 0);
             var playersStat = $"{this.stats.player1Wins}:{this.stats.player2Wins}";
             graphics.DrawString(FinalText, new Font("Arial", 20), Brushes.Black, new Point(this.ClientSize.Width / 2 - 100, 0));
             graphics.DrawString(playersStat, new Font("Arial", 20), Brushes.Black, new Point(this.ClientSize.Width / 2 - 35, 23));

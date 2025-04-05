@@ -23,19 +23,21 @@ namespace sea_battle_C_
         public int Damage { get; set; } = 50;
         public Projectile(Form1 form, Constants.Ship.PlayerShip playerShip, int maxX, int maxY)
         {
+            DoubleBuffered = true;
             Form = form;
             if (playerShip == Constants.Ship.PlayerShip.Player1) {
-                Bitmap = new Bitmap(Constants.Ship.ProjectilePath1);
+                Bitmap = new Bitmap(Image.FromFile(Constants.Ship.ProjectilePath1), new Size(Constants.Ship.Width, Constants.Ship.Height));
             } else {
-                Bitmap = new Bitmap(Constants.Ship.ProjectilePath2);
+                Bitmap = new Bitmap(Image.FromFile(Constants.Ship.ProjectilePath2), new Size(Constants.Ship.Width, Constants.Ship.Height));
                 Direction = ProjectileDirection.Left;
                 DirectionValue = -1;
             }
-            Bitmap = new Bitmap(Bitmap, new Size(Constants.Ship.Width, Constants.Ship.Height));
             Width = Constants.Ship.Width;
             Height = Constants.Ship.Height;
             MaxX = maxX;
             MaxY = maxY;
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
         }
 
         public void MoveProjectile()
