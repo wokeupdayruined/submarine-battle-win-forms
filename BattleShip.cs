@@ -6,31 +6,44 @@ using System.Windows.Forms;
 
 namespace sea_battle_C_
 {
-    // Класс BattleShip представляет подводную лодку игрока
+    // Класс, представляющий корабль игрока
     public class BattleShip : Control
     {
-        // Изображение лодки
-        Bitmap Bitmap { get; set; }
-        // Текущее здоровье лодки
+        // Кадры анимации для нормального состояния
+        private Bitmap[] defaultFrames;
+        // Кадры анимации для повреждённого состояния
+        private Bitmap[] damagedFrames;
+        // Текстура для уничтоженного состояния
+        private Bitmap destroyedFrame;
+        // Текущий кадр анимации
+        private int currentFrame;
+        // Время последней смены кадра
+        private DateTime lastFrameChange;
+        // Длительность одного кадра анимации (в секундах)
+        private const double FrameDurationSeconds = 0.1;
+        // Текущая скорость по оси X
+        private float velocityX = 0f;
+        // Текущая скорость по оси Y
+        private float velocityY = 0f;
+        // Здоровье корабля
         public int Health { get; set; }
-        // Максимальная координата X игрового поля
+        // Максимальная координата X для движения
         public int maxX { get; set; }
-        // Максимальная координата Y игрового поля
+        // Максимальная координата Y для движения
         public int maxY { get; set; }
-
         // Настройки игры
         private readonly GameSettings settings;
-        // Базовая скорость лодки
+        // Базовая скорость корабля
         private float baseSpeed;
-        // Текущая скорость лодки
+        // Текущая скорость корабля
         public float Speed { get; set; }
-        // Время последнего выстрела для каждого типа торпед
+        // Время последнего выстрела для каждого типа снаряда
         private Dictionary<Constants.Ship.TorpedoType, DateTime> lastFireTimes;
-        // Перезарядка для каждого типа торпед
+        // Кулдауны для каждого типа снаряда
         private Dictionary<Constants.Ship.TorpedoType, float> fireCooldowns;
-        // Время окончания ускорения
+        // Время окончания бонуса скорости
         private DateTime? speedBoostEndTime;
-        // Время окончания ускоренной перезарядки
+        // Время окончания бонуса скорострельности
         private DateTime? fireRateBoostEndTime;
         // Флаг движения вправо
         public bool IsMovingRight { get; set; }
@@ -40,94 +53,140 @@ namespace sea_battle_C_
         public bool IsMovingUp { get; set; }
         // Флаг движения вниз
         public bool IsMovingDown { get; set; }
-        // Ссылка на главную форму игры
+        // Ссылка на главную форму
         Form1 form { get; set; }
         // Идентификатор игрока (Player1 или Player2)
         Constants.Ship.PlayerShip playerShip;
-        // Текущая скорость по оси X
-        private float velocityX = 0f;
-        // Текущая скорость по оси Y
-        private float velocityY = 0f;
 
-        // Прямоугольник, описывающий границы лодки
+        // Хитбокс корабля
         public Rectangle ShipBounds
         {
             get => new Rectangle(Location.X, Location.Y, this.Width, this.Height);
         }
 
-        // Конструктор лодки
+        // Конструктор корабля
         public BattleShip(Form1 form, Constants.Ship.PlayerShip playerShip, int maxX, int maxY, GameSettings settings)
         {
-            // Включаем двойную буферизацию для плавного отображения
+            // Включаем двойную буферизацию для плавной отрисовки
             DoubleBuffered = true;
+            // Сохраняем ссылку на форму
             this.form = form;
+            // Сохраняем идентификатор игрока
             this.playerShip = playerShip;
+            // Сохраняем настройки игры
             this.settings = settings;
-            // Выбираем изображение в зависимости от игрока
-            string imagePath = playerShip == Constants.Ship.PlayerShip.Player1 ? Constants.Ship.ImagePath1 : Constants.Ship.ImagePath2;
-            Console.WriteLine(imagePath);
+            // Устанавливаем начальный кадр
+            currentFrame = 0;
+            // Устанавливаем время последней смены кадра
+            lastFrameChange = DateTime.Now;
+
+            // Определяем базовый путь к ресурсам
+            string basePath = playerShip == Constants.Ship.PlayerShip.Player1 ? "resources/player_1" : "resources/player_2";
+
+            // Загружаем кадры анимации для нормального состояния
+            defaultFrames = new Bitmap[6];
+            for (int i = 0; i < 6; i++)
+            {
+                string imagePath = Path.Combine(basePath, "default", $"default_{i + 1}.png");
+                try
+                {
+                    defaultFrames[i] = new Bitmap(Image.FromFile(imagePath), new Size(Constants.Ship.Width, Constants.Ship.Height));
+                    Console.WriteLine($"Loaded default frame {i + 1} for {playerShip}: {imagePath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading default frame {imagePath}: {ex.Message}");
+                    throw;
+                }
+            }
+
+            // Загружаем кадры анимации для повреждённого состояния
+            damagedFrames = new Bitmap[6];
+            for (int i = 0; i < 6; i++)
+            {
+                string imagePath = Path.Combine(basePath, "damaged", $"damaged_{i + 1}.png");
+                try
+                {
+                    damagedFrames[i] = new Bitmap(Image.FromFile(imagePath), new Size(Constants.Ship.Width, Constants.Ship.Height));
+                    Console.WriteLine($"Loaded damaged frame {i + 1} for {playerShip}: {imagePath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading damaged frame {imagePath}: {ex.Message}");
+                    throw;
+                }
+            }
+
+            // Загружаем текстуру уничтоженного состояния
+            string destroyedPath = Path.Combine(basePath, "destroyed.png");
             try
             {
-                // Загружаем и масштабируем изображение лодки
-                Bitmap = new Bitmap(Image.FromFile(imagePath), new Size(Constants.Ship.Width, Constants.Ship.Height));
-                Console.WriteLine($"Загружено изображение для {playerShip}: Ширина={Bitmap.Width}, Высота={Bitmap.Height}");
+                destroyedFrame = new Bitmap(Image.FromFile(destroyedPath), new Size(Constants.Ship.Width, Constants.Ship.Height));
+                Console.WriteLine($"Loaded destroyed frame for {playerShip}: {destroyedPath}");
             }
             catch (Exception ex)
             {
-                // Обрабатываем ошибку загрузки изображения
-                Console.WriteLine($"Ошибка загрузки изображения {imagePath}: {ex.Message}");
+                Console.WriteLine($"Error loading destroyed frame {destroyedPath}: {ex.Message}");
                 throw;
             }
-            // Устанавливаем размеры лодки
+
+            // Устанавливаем размер корабля
             base.Width = Constants.Ship.Width;
             base.Height = Constants.Ship.Height;
+            // Устанавливаем границы движения
             this.maxX = maxX;
             this.maxY = maxY;
-            // Устанавливаем прозрачный фон
+            // Включаем поддержку прозрачного фона
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+            // Устанавливаем прозрачный фон
             BackColor = Color.Transparent;
-            // Делаем лодку видимой и активной
+            // Делаем корабль видимым
             Visible = true;
+            // Включаем обработку событий
             Enabled = true;
-            // Устанавливаем начальное здоровье из настроек
+            // Устанавливаем начальное здоровье
             Health = settings.StartHealth;
-            // Устанавливаем базовую и текущую скорость
+            // Устанавливаем базовую скорость
             baseSpeed = settings.ShipSpeed;
+            // Устанавливаем текущую скорость
             Speed = baseSpeed;
-            // Инициализируем времена выстрелов
+            // Инициализируем время последнего выстрела
             lastFireTimes = new Dictionary<Constants.Ship.TorpedoType, DateTime>
             {
                 { Constants.Ship.TorpedoType.Ordinary, DateTime.MinValue },
                 { Constants.Ship.TorpedoType.Homing, DateTime.MinValue },
                 { Constants.Ship.TorpedoType.Mine, DateTime.MinValue }
             };
-            // Инициализируем перезарядки для торпед
+            // Инициализируем кулдауны выстрелов
             fireCooldowns = new Dictionary<Constants.Ship.TorpedoType, float>
             {
                 { Constants.Ship.TorpedoType.Ordinary, (float)settings.OrdinaryFireCooldownSeconds },
                 { Constants.Ship.TorpedoType.Homing, (float)settings.HomingFireCooldownSeconds },
                 { Constants.Ship.TorpedoType.Mine, (float)settings.MineFireCooldownSeconds }
             };
-            Console.WriteLine($"Лодка {playerShip} инициализирована, Видимость: {Visible}, Активность: {Enabled}, Размер: {base.Width}x{base.Height}, Позиция: ({Location.X}, {Location.Y})");
+            Console.WriteLine($"BattleShip {playerShip} initialized, Visible: {Visible}, Enabled: {Enabled}, Size: {base.Width}x{base.Height}, Location: ({Location.X}, {Location.Y})");
         }
 
-        // Регистрирует время выстрела для указанного типа торпеды
+        // Регистрация выстрела
         public void Fire(Constants.Ship.TorpedoType torpedoType)
         {
+            // Обновляем время выстрела для указанного типа снаряда
             lastFireTimes[torpedoType] = DateTime.Now;
         }
 
-        // Проверяет, можно ли выстрелить указанным типом торпеды
+        // Проверка возможности выстрела
         public bool CanFire(Constants.Ship.TorpedoType torpedoType)
         {
+            // Проверяем, истёк ли кулдаун для указанного типа снаряда
             return (DateTime.Now - lastFireTimes[torpedoType]).TotalSeconds >= fireCooldowns[torpedoType];
         }
 
-        // Обновляет позицию лодки с учетом ввода и физики
+        // Движение корабля
         public void MoveShip()
         {
             // Обновляем состояние бонусов
             UpdatePowerUps();
+            // Текущая позиция корабля
             var nextLocation = Location;
 
             // Вычисляем желаемое ускорение на основе ввода
@@ -137,7 +196,7 @@ namespace sea_battle_C_
             if (IsMovingUp) inputY -= 1f;
             if (IsMovingDown) inputY += 1f;
 
-            // Нормализуем диагональное движение для равномерной скорости
+            // Нормализуем диагональное движение
             if (inputX != 0 && inputY != 0)
             {
                 float length = (float)Math.Sqrt(inputX * inputX + inputY * inputY);
@@ -145,11 +204,11 @@ namespace sea_battle_C_
                 inputY /= length;
             }
 
-            // Применяем ускорение к текущей скорости
+            // Применяем ускорение
             velocityX += inputX * settings.Acceleration;
             velocityY += inputY * settings.Acceleration;
 
-            // Применяем трение для замедления
+            // Применяем трение (замедление)
             velocityX *= (1f - settings.Friction);
             velocityY *= (1f - settings.Friction);
 
@@ -162,59 +221,71 @@ namespace sea_battle_C_
                 velocityY *= scale;
             }
 
-            // Обновляем позицию лодки
+            // Обновляем позицию корабля
             nextLocation.X += (int)velocityX;
             nextLocation.Y += (int)velocityY;
 
-            // Ограничиваем движение в пределах экрана и разделяем поле для игроков
+            // Ограничиваем движение границами экрана и половиной поля
             if (playerShip == Constants.Ship.PlayerShip.Player1)
             {
+                // Ограничиваем движение первого игрока левой половиной экрана
                 nextLocation.X = Math.Max(0, Math.Min(nextLocation.X, maxX / 2 - Width));
             }
             else // Player2
             {
+                // Ограничиваем движение второго игрока правой половиной экрана
                 nextLocation.X = Math.Max(maxX / 2, Math.Min(nextLocation.X, maxX - Width));
             }
+            // Ограничиваем движение по вертикали
             nextLocation.Y = Math.Max(0, Math.Min(nextLocation.Y, maxY - Height));
 
-            // Проверяем, нет ли столкновений с другими объектами
+            // Проверяем столкновения с другим кораблём
             if (!form.HasObstacle(new Rectangle(nextLocation.X, nextLocation.Y, Width, Height), this))
+                // Обновляем позицию, если нет препятствий
                 Location = nextLocation;
+
+            // Обновляем кадр анимации
+            UpdateAnimation();
         }
 
-        // Сбрасывает состояние лодки для нового матча
+        // Сброс состояния корабля
         public void Reinitialize()
         {
-            // Восстанавливаем начальное здоровье
+            // Восстанавливаем здоровье
             Health = settings.StartHealth;
             // Восстанавливаем базовую скорость
             Speed = baseSpeed;
-            // Сбрасываем перезарядки
+            // Восстанавливаем кулдауны
             fireCooldowns[Constants.Ship.TorpedoType.Ordinary] = (float)settings.OrdinaryFireCooldownSeconds;
             fireCooldowns[Constants.Ship.TorpedoType.Homing] = (float)settings.HomingFireCooldownSeconds;
             fireCooldowns[Constants.Ship.TorpedoType.Mine] = (float)settings.MineFireCooldownSeconds;
-            // Отключаем активные бонусы
+            // Сбрасываем бонусы
             speedBoostEndTime = null;
             fireRateBoostEndTime = null;
-            // Сбрасываем времена выстрелов
+            // Сбрасываем время выстрелов
             lastFireTimes[Constants.Ship.TorpedoType.Ordinary] = DateTime.MinValue;
             lastFireTimes[Constants.Ship.TorpedoType.Homing] = DateTime.MinValue;
             lastFireTimes[Constants.Ship.TorpedoType.Mine] = DateTime.MinValue;
             // Сбрасываем скорость
             velocityX = 0f;
             velocityY = 0f;
+            // Сбрасываем анимацию
+            currentFrame = 0;
+            lastFrameChange = DateTime.Now;
         }
 
-        // Обрабатывает попадание торпеды
+        // Обработка попадания снаряда
         public void Hit(Projectile projectile)
         {
-            Console.WriteLine($"Попадание в {playerShip}, урон: {projectile.Damage}, здоровье до: {Health}");
+            Console.WriteLine($"Hit {playerShip}, damage: {projectile.Damage}, health before: {Health}");
             // Уменьшаем здоровье на величину урона
             Health -= projectile.Damage;
-            Console.WriteLine($"Здоровье после: {Health}");
+            Console.WriteLine($"Health after: {Health}");
+            // Перерисовываем для обновления анимации
+            Invalidate();
         }
 
-        // Применяет бонус к лодке
+        // Применение бонуса
         public void ApplyPowerUp(PowerUp.PowerUpType type)
         {
             switch (type)
@@ -222,54 +293,114 @@ namespace sea_battle_C_
                 case PowerUp.PowerUpType.SpeedBoost:
                     // Увеличиваем скорость
                     Speed = baseSpeed * settings.PowerUpSpeedMultiplier;
+                    // Устанавливаем время действия бонуса
                     speedBoostEndTime = DateTime.Now.AddSeconds(Constants.Ship.PowerUpDurationSeconds);
-                    Console.WriteLine($"Применено ускорение к {playerShip}, скорость: {Speed}");
+                    Console.WriteLine($"Applied speed boost to {playerShip}, speed: {Speed}");
                     break;
                 case PowerUp.PowerUpType.FireRateBoost:
-                    // Уменьшаем время перезарядки
+                    // Уменьшаем кулдауны выстрелов
                     fireCooldowns[Constants.Ship.TorpedoType.Ordinary] = (float)settings.OrdinaryFireCooldownSeconds * settings.PowerUpFireRateMultiplier;
                     fireCooldowns[Constants.Ship.TorpedoType.Homing] = (float)settings.HomingFireCooldownSeconds * settings.PowerUpFireRateMultiplier;
                     fireCooldowns[Constants.Ship.TorpedoType.Mine] = (float)settings.MineFireCooldownSeconds * settings.PowerUpFireRateMultiplier;
+                    // Устанавливаем время действия бонуса
                     fireRateBoostEndTime = DateTime.Now.AddSeconds(Constants.Ship.PowerUpDurationSeconds);
-                    Console.WriteLine($"Применено ускорение перезарядки к {playerShip}, перезарядки: Обычная={fireCooldowns[Constants.Ship.TorpedoType.Ordinary]}с, Самонаводящаяся={fireCooldowns[Constants.Ship.TorpedoType.Homing]}с, Мина={fireCooldowns[Constants.Ship.TorpedoType.Mine]}с");
+                    Console.WriteLine($"Applied fire rate boost to {playerShip}, cooldowns: Ordinary={fireCooldowns[Constants.Ship.TorpedoType.Ordinary]}s, Homing={fireCooldowns[Constants.Ship.TorpedoType.Homing]}s, Mine={fireCooldowns[Constants.Ship.TorpedoType.Mine]}s");
                     break;
                 case PowerUp.PowerUpType.HealthBoost:
-                    // Восстанавливаем здоровье, не превышая максимум
+                    // Восстанавливаем здоровье
                     Health = Math.Min(Health + settings.PowerUpHealthBoost, settings.StartHealth);
-                    Console.WriteLine($"Применено восстановление здоровья к {playerShip}, здоровье: {Health}");
+                    Console.WriteLine($"Applied health boost to {playerShip}, health: {Health}");
+                    // Перерисовываем для обновления анимации
+                    Invalidate();
                     break;
             }
         }
 
-        // Обновляет состояние бонусов
+        // Обновление состояния бонусов
         public void UpdatePowerUps()
         {
-            // Проверяем окончание ускорения
+            // Проверяем окончание бонуса скорости
             if (speedBoostEndTime.HasValue && DateTime.Now >= speedBoostEndTime.Value)
             {
+                // Восстанавливаем базовую скорость
                 Speed = baseSpeed;
                 speedBoostEndTime = null;
-                Console.WriteLine($"Ускорение истекло для {playerShip}, скорость: {Speed}");
+                Console.WriteLine($"Speed boost expired for {playerShip}, speed: {Speed}");
             }
-            // Проверяем окончание ускоренной перезарядки
+            // Проверяем окончание бонуса скорострельности
             if (fireRateBoostEndTime.HasValue && DateTime.Now >= fireRateBoostEndTime.Value)
             {
+                // Восстанавливаем стандартные кулдауны
                 fireCooldowns[Constants.Ship.TorpedoType.Ordinary] = (float)settings.OrdinaryFireCooldownSeconds;
                 fireCooldowns[Constants.Ship.TorpedoType.Homing] = (float)settings.HomingFireCooldownSeconds;
                 fireCooldowns[Constants.Ship.TorpedoType.Mine] = (float)settings.MineFireCooldownSeconds;
                 fireRateBoostEndTime = null;
-                Console.WriteLine($"Ускорение перезарядки истекло для {playerShip}, перезарядки: Обычная={fireCooldowns[Constants.Ship.TorpedoType.Ordinary]}с, Самонаводящаяся={fireCooldowns[Constants.Ship.TorpedoType.Homing]}с, Мина={fireCooldowns[Constants.Ship.TorpedoType.Mine]}с");
+                Console.WriteLine($"Fire rate boost expired for {playerShip}, cooldowns: Ordinary={fireCooldowns[Constants.Ship.TorpedoType.Ordinary]}s, Homing={fireCooldowns[Constants.Ship.TorpedoType.Homing]}s, Mine={fireCooldowns[Constants.Ship.TorpedoType.Mine]}s");
             }
         }
 
-        // Отрисовывает лодку
+        // Обновление анимации
+        private void UpdateAnimation()
+        {
+            // Проверяем, пора ли сменить кадр
+            if ((DateTime.Now - lastFrameChange).TotalSeconds >= FrameDurationSeconds)
+            {
+                // Если корабль жив, переключаем кадры
+                if (Health > 30)
+                {
+                    currentFrame = (currentFrame + 1) % 6; // Цикл по 6 кадрам
+                }
+                // Обновляем время смены кадра
+                lastFrameChange = DateTime.Now;
+                // Запрашиваем перерисовку
+                Invalidate();
+            }
+        }
+
+        // Отрисовка корабля
         protected override void OnPaint(PaintEventArgs e)
         {
             var graphics = e.Graphics;
-            Console.WriteLine($"Отрисовка {playerShip} на ({Location.X}, {Location.Y})");
-            // Рисуем изображение лодки
-            graphics.DrawImageUnscaled(Bitmap, 0, 0);
+            Console.WriteLine($"Painting {playerShip} at ({Location.X}, {Location.Y}), Health: {Health}, Frame: {currentFrame}");
+
+            // Выбираем текстуру в зависимости от здоровья
+            if (Health <= 30)
+            {
+                // Отрисовываем уничтоженное состояние
+                graphics.DrawImageUnscaled(destroyedFrame, 0, 0);
+            }
+            else if (Health <= 65)
+            {
+                // Отрисовываем повреждённое состояние
+                graphics.DrawImageUnscaled(damagedFrames[currentFrame], 0, 0);
+            }
+            else
+            {
+                // Отрисовываем нормальное состояние
+                graphics.DrawImageUnscaled(defaultFrames[currentFrame], 0, 0);
+            }
+
             base.OnPaint(e);
+        }
+
+        // Освобождение ресурсов
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Освобождаем кадры анимации
+                foreach (var frame in defaultFrames)
+                {
+                    frame?.Dispose();
+                }
+                foreach (var frame in damagedFrames)
+                {
+                    frame?.Dispose();
+                }
+                // Освобождаем текстуру уничтоженного состояния
+                destroyedFrame?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

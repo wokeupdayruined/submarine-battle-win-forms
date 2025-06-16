@@ -29,6 +29,7 @@ namespace sea_battle_C_
         // Скорость снаряда
         private float Speed { get; set; } = 15f; // Начальная скорость для мин и торпед
         // Направление движения (1 для Player1, -1 для Player2)
+        private float verticalVelocity = 0f; // Вертикальная скорость для самонаводящихся торпед
         public int DirectionValue => PlayerShip == Constants.Ship.PlayerShip.Player1 ? 1 : -1;
         // Целевая позиция для самонаводящихся торпед
         private Point TargetLocation { get; set; }
@@ -75,8 +76,8 @@ namespace sea_battle_C_
                     // Самонаводящаяся торпеда
                     imagePath = playerShip == Constants.Ship.PlayerShip.Player1 ? Constants.Ship.HomingProjectilePath1 : Constants.Ship.HomingProjectilePath2;
                     Damage = settings.HomingDamage;
-                    width = Constants.Ship.ProjectileWidth;
-                    height = Constants.Ship.ProjectileHeight;
+                    width = Constants.Ship.HomingProjectileWidth; // Используем новые константы
+                    height = Constants.Ship.HomingProjectileHeight;
                     break;
                 case Constants.Ship.TorpedoType.Mine:
                     // Мина
@@ -124,6 +125,8 @@ namespace sea_battle_C_
             var targetShip = playerShip == Constants.Ship.PlayerShip.Player1 ? Form.GetPlayer2() : Form.GetPlayer1();
             // Устанавливаем целевую позицию
             TargetLocation = targetShip.Location;
+            // Инициализируем начальную позицию мины
+            initialLocation = Location;
         }
 
         // Движение снаряда
@@ -154,13 +157,25 @@ namespace sea_battle_C_
                     {
                         // Уменьшаем скорость на 4% за кадр
                         Speed = Math.Max(0, Speed * 0.96f);
-                        // Двигаем мину
-                        nextLocation.X += (int)(Speed * DirectionValue);
-                        Console.WriteLine($"Mine moving to ({nextLocation.X}, {nextLocation.Y}), Speed: {Speed}, Distance: {distanceTraveled}");
+                        // Проверяем, достаточно ли мала скорость
+                        if (Speed < 4f)
+                        {
+                            // Принудительно останавливаем мину
+                            isMineStopped = true;
+                            mineStopTime = DateTime.Now;
+                            Speed = 0;
+                            Console.WriteLine($"Mine stopped due to low speed at ({nextLocation.X}, {nextLocation.Y}), Distance: {distanceTraveled}");
+                        }
+                        else
+                        {
+                            // Двигаем мину
+                            nextLocation.X += (int)(Speed * DirectionValue);
+                            Console.WriteLine($"Mine moving to ({nextLocation.X}, {nextLocation.Y}), Speed: {Speed}, Distance: {distanceTraveled}");
+                        }
                     }
                     else
                     {
-                        // Останавливаем мину
+                        // Останавливаем мину, если достигнуто целевое расстояние
                         isMineStopped = true;
                         mineStopTime = DateTime.Now;
                         Speed = 0;
@@ -216,6 +231,7 @@ namespace sea_battle_C_
                 }
             }
             // Обработка самонаводящейся торпеды
+            // Обработка самонаводящейся торпеды
             else if (TorpedoType == Constants.Ship.TorpedoType.Homing)
             {
                 // Проверяем время жизни
@@ -242,17 +258,25 @@ namespace sea_battle_C_
 
                 if (!hasMissed)
                 {
-                    // Корректируем движение по Y
-                    var diffY = targetLocation.Y - (nextLocation.Y + Constants.Ship.ProjectileHeight / 2);
-                    var length = Math.Abs(diffY);
-                    if (length > 0)
-                    {
-                        var speed = 1.8f; // Скорость наведения
-                        nextLocation.Y += (int)(diffY / length * speed);
-                    }
+                    // Вычисляем разницу по Y до цели
+                    var diffY = targetLocation.Y - (nextLocation.Y + Constants.Ship.HomingProjectileHeight / 2);
+                    // Определяем желаемое направление (1 вниз, -1 вверх)
+                    float desiredDirection = diffY > 0 ? 1f : -1f;
+                    // Ускорение по вертикали
+                    float verticalAcceleration = 0.4f; // Ускорение (можно настроить)
+                    // Максимальная вертикальная скорость
+                    float maxVerticalSpeed = 5f; // Ограничение скорости (можно настроить)
+                    // Применяем ускорение в направлении цели
+                    verticalVelocity += desiredDirection * verticalAcceleration;
+                    //// Применяем трение для сглаживания смены направления
+                    verticalVelocity *= 0.97f; // Уменьшаем скорость на 10% для плавности
+                    // Ограничиваем вертикальную скорость
+                    verticalVelocity = Math.Max(-maxVerticalSpeed, Math.Min(maxVerticalSpeed, verticalVelocity));
+                    // Обновляем позицию по Y
+                    nextLocation.Y += (int)verticalVelocity;
                 }
 
-                Console.WriteLine($"Homing projectile moving to ({nextLocation.X}, {nextLocation.Y}), target Y: {targetLocation.Y}, missed: {hasMissed}");
+                Console.WriteLine($"Homing projectile moving to ({nextLocation.X}, {nextLocation.Y}), target Y: {targetLocation.Y}, verticalVelocity: {verticalVelocity}, missed: {hasMissed}");
             }
             // Обработка обычной торпеды
             else
@@ -262,8 +286,26 @@ namespace sea_battle_C_
             }
 
             // Определяем размер снаряда
-            int width = TorpedoType == Constants.Ship.TorpedoType.Mine ? Constants.Ship.MineSize : Constants.Ship.ProjectileWidth;
-            int height = TorpedoType == Constants.Ship.TorpedoType.Mine ? Constants.Ship.MineSize : Constants.Ship.ProjectileHeight;
+            // Определяем размер снаряда
+            int width, height;
+
+            switch (TorpedoType)
+            {
+                case Constants.Ship.TorpedoType.Mine:
+                    width = Constants.Ship.MineSize;
+                    height = Constants.Ship.MineSize;
+                    break;
+
+                case Constants.Ship.TorpedoType.Homing:
+                    width = Constants.Ship.HomingProjectileWidth;
+                    height = Constants.Ship.HomingProjectileHeight;
+                    break;
+
+                default: // Обычный снаряд (или другой тип, если есть)
+                    width = Constants.Ship.ProjectileWidth;
+                    height = Constants.Ship.ProjectileHeight;
+                    break;
+            }
 
             // Проверяем выход за границы экрана
             if (nextLocation.X < -width || nextLocation.X > maxX || nextLocation.Y < -height || nextLocation.Y > maxY)

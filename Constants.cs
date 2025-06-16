@@ -4,8 +4,8 @@ namespace sea_battle_C_
 {
     public static class Constants
     {
-        public static int FormWidth = 800;
-        public static int FormHeight = 600;
+        public static int FormWidth = 960;
+        public static int FormHeight = 640;
         public static string BackgroundImagePath = "resources/KrustyKrab.jpg";
         public static class Player1Controls
         {
@@ -43,8 +43,6 @@ namespace sea_battle_C_
                 Mine
             }
 
-            public const string ImagePath1 = "resources/ship1.png";
-            public const string ImagePath2 = "resources/ship2.png";
             public const string ProjectilePath1 = "resources/projectile1.png";
             public const string ProjectilePath2 = "resources/projectile2.png";
             public const string HomingProjectilePath1 = "resources/homing_projectile1.png";
@@ -65,17 +63,19 @@ namespace sea_battle_C_
                    "resources/powerup/powerup_health.png"
                };
             public const int BackgroundMusicVolume = 20;
-            public const int Width = 80;
-            public const int Height = 40;
-            public const int ExplosionSize = 150;
-            public const int PowerUpSize = 32;
+            public const int Width = 90;
+            public const int Height = 60;
+            public const int ExplosionSize = 180;
+            public const int PowerUpSize = 50;
             public const int ProjectileWidth = 64;
             public const int ProjectileHeight = 32;
-            public const int MineSize = 40; 
+            public const int HomingProjectileWidth = 63; 
+            public const int HomingProjectileHeight = 21; 
+            public const int MineSize = 60; 
             public const int MineExplosionRadius = 180; 
             public const double PowerUpDurationSeconds = 10.0;
 
-            public const double MineDelaySeconds = 3.0;
+            public const double MineDelaySeconds = 1.2;
             public const double ExplosionDurationSeconds = 0.5;
             public const double HomingProjectileLifetimeSeconds = 10.0;
         }
